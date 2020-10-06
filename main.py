@@ -1,6 +1,3 @@
-'''
-Readme Development Metrics With waka time progress
-'''
 import re
 import os
 import base64
@@ -10,7 +7,7 @@ import requests
 from github import Github, GithubException, InputGitAuthor
 import datetime
 from string import Template
-from loc import LinesOfCode
+from LOC import LinesOfCode
 import time
 import traceback
 import humanize
@@ -21,13 +18,15 @@ import sys
 from dotenv import load_dotenv
 
 load_dotenv()
+project_folder = os.path.expanduser('C:/Users/Potats-PC/Documents/GIT/GitHub_Stats')
+load_dotenv(os.path.join(project_folder, '.env'))
 
 START_COMMENT = '<!--START_SECTION:waka-->'
 END_COMMENT = '<!--END_SECTION:waka-->'
 listReg = f"{START_COMMENT}[\\s\\S]+{END_COMMENT}"
 
-waka_key = os.getenv('INPUT_WAKATIME_API_KEY')
-ghtoken = os.getenv('INPUT_GH_TOKEN')
+waka_key = os.getenv('WAKA_API_KEY')
+ghtoken = os.getenv('GH_TOKEN')
 showTimeZone = os.getenv('INPUT_SHOW_TIMEZONE')
 showProjects = os.getenv('INPUT_SHOW_PROJECTS')
 showEditors = os.getenv('INPUT_SHOW_EDITORS')
@@ -42,7 +41,6 @@ show_profile_view = os.getenv('INPUT_SHOW_PROFILE_VIEWS')
 show_short_info = os.getenv('INPUT_SHOW_SHORT_INFO')
 locale = os.getenv('INPUT_LOCALE')
 show_waka_stats = 'y'
-# The GraphQL query to get commit data.
 userInfoQuery = """
 {
     viewer {
@@ -143,7 +141,6 @@ repositoryListQuery = Template("""
 }
 """)
 
-
 def run_query(query):
     request = requests.post('https://api.github.com/graphql', json={'query': query}, headers=headers)
     if request.status_code == 200:
@@ -151,17 +148,16 @@ def run_query(query):
     else:
         raise Exception("Query failed to run by returning code of {}. {}".format(request.status_code, query))
 
-
 def make_graph(percent: float):
-    '''Make progress graph from API graph'''
-    done_block = '█'
+
+    done_block = '▓'
+
     empty_block = '░'
+
     pc_rnd = round(percent)
     return f"{done_block * int(pc_rnd / 4)}{empty_block * int(25 - int(pc_rnd / 4))}"
 
-
 def make_list(data: list):
-    '''Make List'''
     data_list = []
     for l in data[:5]:
         ln = len(l['name'])
@@ -170,9 +166,7 @@ def make_list(data: list):
         data_list.append(op)
     return ' \n'.join(data_list)
 
-
 def make_commit_list(data: list):
-    '''Make List'''
     data_list = []
     for l in data[:7]:
         ln = len(l['name'])
@@ -181,22 +175,19 @@ def make_commit_list(data: list):
         data_list.append(op)
     return ' \n'.join(data_list)
 
-
 def generate_commit_list(tz):
     string = ''
-    result = run_query(userInfoQuery)  # Execute the query
+    result = run_query(userInfoQuery)
     username = result["data"]["viewer"]["login"]
     id = result["data"]["viewer"]["id"]
-    # print("user {}".format(username))
-
     result = run_query(createContributedRepoQuery.substitute(username=username))
     nodes = result["data"]["user"]["repositoriesContributedTo"]["nodes"]
     repos = [d for d in nodes if d['isFork'] is False]
 
-    morning = 0  # 6 - 12
-    daytime = 0  # 12 - 18
-    evening = 0  # 18 - 24
-    night = 0  # 0 - 6
+    morning = 0
+    daytime = 0
+    evening = 0
+    night = 0
 
     Monday = 0
     Tuesday = 0
@@ -247,15 +238,16 @@ def generate_commit_list(tz):
     sum_week = Sunday + Monday + Tuesday + Friday + Saturday + Wednesday + Thursday
     title = translate['I am an Early'] if morning + daytime >= evening + night else translate['I am a Night']
     one_day = [
-        {"name": "🌞 " + translate['Morning'], "text": str(morning) + " commits",
+        {"name": "Ω" + translate['Morning'], "text": str(morning) + " commits",
          "percent": round((morning / sumAll) * 100, 2)},
-        {"name": "🌆 " + translate['Daytime'], "text": str(daytime) + " commits",
+        {"name": "Θ" + translate['Daytime'], "text": str(daytime) + " commits",
          "percent": round((daytime / sumAll) * 100, 2)},
-        {"name": "🌃 " + translate['Evening'], "text": str(evening) + " commits",
+        {"name": "φ" + translate['Evening'], "text": str(evening) + " commits",
          "percent": round((evening / sumAll) * 100, 2)},
-        {"name": "🌙 " + translate['Night'], "text": str(night) + " commits",
+        {"name": "∩" + translate['Night'], "text": str(night) + " commits",
          "percent": round((night / sumAll) * 100, 2)},
     ]
+
     dayOfWeek = [
         {"name": translate['Monday'], "text": str(Monday) + " commits", "percent": round((Monday / sum_week) * 100, 2)},
         {"name": translate['Tuesday'], "text": str(Tuesday) + " commits",
@@ -280,8 +272,8 @@ def generate_commit_list(tz):
         for day in dayOfWeek:
             if day['percent'] > max_element['percent']:
                 max_element = day
-        days_title = translate['I am Most Productive on'] + ' ' + max_element['name']
-        string = string + '📅 **' + days_title + '** \n\n' + '```text\n' + make_commit_list(dayOfWeek) + '\n\n```\n'
+        days_title = translate['Most Productive on'] + ' ' + max_element['name']
+        string = string + days_title + '** \n\n' + '```text\n' + make_commit_list(dayOfWeek) + '\n\n```\n'
 
     return string
 
@@ -301,12 +293,12 @@ def get_waka_time_stats():
             empty = False
             stats = stats + generate_commit_list(tz=data['data']['timezone']) + '\n\n'
 
-        stats += '📊 **' + translate['This Week I Spend My Time On'] + '** \n\n'
+        stats += translate['This Week I Spend My Time On'] + '** \n\n'
         stats += '```text\n'
         if showTimeZone.lower() in truthy:
             empty = False
             tzone = data['data']['timezone']
-            stats = stats + '⌚︎ ' + translate['Timezone'] + ': ' + tzone + '\n\n'
+            stats = stats + translate['Timezone'] + ': ' + tzone + '\n\n'
 
         if showLanguage.lower() in truthy:
             empty = False
@@ -314,7 +306,7 @@ def get_waka_time_stats():
                 lang_list = no_activity
             else:
                 lang_list = make_list(data['data']['languages'])
-            stats = stats + '💬 ' + translate['Languages'] + ': \n' + lang_list + '\n\n'
+            stats = stats + translate['Languages'] + ': \n' + lang_list + '\n\n'
 
         if showEditors.lower() in truthy:
             empty = False
@@ -322,17 +314,16 @@ def get_waka_time_stats():
                 edit_list = no_activity
             else:
                 edit_list = make_list(data['data']['editors'])
-            stats = stats + '🔥 ' + translate['Editors'] + ': \n' + edit_list + '\n\n'
+            stats = stats + translate['Editors'] + ': \n' + edit_list + '\n\n'
 
         if showProjects.lower() in truthy:
             empty = False
             if len(data['data']['projects']) == 0:
                 project_list = no_activity
             else:
-                # Re-order the project list by percentage
                 data['data']['projects'] = sorted(data['data']['projects'], key=lambda x: x["percent"], reverse=True)
                 project_list = make_list(data['data']['projects'])
-            stats = stats + '🐱‍💻 ' + translate['Projects'] + ': \n' + project_list + '\n\n'
+            stats = stats + translate['Projects'] + ': \n' + project_list + '\n\n'
 
         if showOs.lower() in truthy:
             empty = False
@@ -340,7 +331,7 @@ def get_waka_time_stats():
                 os_list = no_activity
             else:
                 os_list = make_list(data['data']['operating_systems'])
-            stats = stats + '💻 ' + translate['operating system'] + ': \n' + os_list + '\n\n'
+            stats = stats + translate['operating system'] + ': \n' + os_list + '\n\n'
 
         stats += '```\n\n'
         if empty:
@@ -396,7 +387,7 @@ def get_line_of_code():
 
 
 def get_short_info(github):
-    string = '**🐱 ' + translate['My GitHub Data'] + '** \n\n'
+    string = translate['My GitHub Data'] + '** \n\n'
     user_info = github.get_user()
     if user_info.disk_usage is None:
         disk_usage = humanize.naturalsize(0)
@@ -408,44 +399,34 @@ def get_short_info(github):
         data = request.json()
         total = data['years'][0]['total']
         year = data['years'][0]['year']
-        string += '> 🏆 ' + humanize.intcomma(total) + " " + translate[
+        string += humanize.intcomma(total) + " " + translate[
             'Contributions in the year'] + " " + year + '\n > \n'
 
-    string += '> 📦 ' + disk_usage + " " + translate["Used in GitHub's Storage"] + ' \n > \n'
+    string += disk_usage + " " + translate["Used in GitHub's Storage"] + ' \n > \n'
     is_hireable = user_info.hireable
     public_repo = user_info.public_repos
     private_repo = user_info.owned_private_repos
     if private_repo is None:
         private_repo = 0
-    if is_hireable:
-        string += "> 💼 " + translate["Opted to Hire"] + "\n > \n"
-    else:
-        string += "> 🚫 " + translate["Not Opted to Hire"] + "\n > \n"
-
-    string += '> 📜 ' + str(public_repo) + " "
+    string += str(public_repo) + " "
     string += translate['public repositories'] + '\n > \n' if public_repo > 1 else translate[
                                                                                        'public repository'] + ' \n > \n'
-    string += '> 🔑 ' + str(private_repo) + " "
+    string += str(private_repo) + " "
     string += translate['private repositories'] + ' \n\n' if private_repo > 1 else translate[
                                                                                        'private repository'] + ' \n > \n'
-
     return string
 
-
 def get_stats(github):
-    '''Gets API data and returns markdown progress'''
-
     stats = ''
     repositoryList = run_query(repositoryListQuery.substitute(username=username, id=id))
 
     if show_profile_view.lower() in truthy:
         data = run_v3_api(get_profile_view.substitute(owner=username, repo=username))
-        stats += '![Profile Views](http://img.shields.io/badge/' + quote(str(translate['Profile Views'])) + '-' + str(
-            data['count']) + '-blue)\n\n'
+        stats += '![Profile Views](http://img.shields.io/badge/' + quote(str(translate['Profile Views'])) + '-' + str(data['count']) + '-blue)\n\n'
 
     if show_loc.lower() in truthy:
         stats += '![Lines of code](https://img.shields.io/badge/' + quote(
-            str(translate['From Hello World I have written'])) + '-' + quote(
+            str(translate['Since the dawn of my Hello World code, I have written'])) + '-' + quote(
             str(get_line_of_code())) + '%20' + quote(str(translate['Lines of code'])) + '-blue)\n\n'
 
     if show_short_info.lower() in truthy:
@@ -462,22 +443,16 @@ def get_stats(github):
         loc.calculateLoc()
         stats += '**' + translate['Timeline'] + '**\n\n'
         stats = stats + '![Chart not found](https://github.com/' + username + '/' + username + '/blob/master/charts/bar_graph.png) \n\n'
-
     return stats
-
-
 def star_me():
-    requests.put("https://api.github.com/user/starred/anmol098/waka-readme-stats", headers=headers)
+    requests.put("https://api.github.com/user/starred/SRagavendar/GitHub_Stats", headers=headers)
     
 
 def decode_readme(data: str):
-    '''Decode the contents of old readme'''
     decoded_bytes = base64.b64decode(data)
     return str(decoded_bytes, 'utf-8')
 
-
 def generate_new_readme(stats: str, readme: str):
-    '''Generate a new Readme.md'''
     stats_in_readme = f"{START_COMMENT}\n{stats}\n{END_COMMENT}"
     return re.sub(listReg, stats_in_readme, readme)
 
@@ -488,19 +463,19 @@ if __name__ == '__main__':
             raise Exception('Token not available')
         g = Github(ghtoken)
         headers = {"Authorization": "Bearer " + ghtoken}
-        user_data = run_query(userInfoQuery)  # Execute the query
+        user_data = run_query(userInfoQuery)
         username = user_data["data"]["viewer"]["login"]
         id = user_data["data"]["viewer"]["id"]
         print(username)
         repo = g.get_repo(f"{username}/{username}")
         contents = repo.get_readme()
         try:
-            with open(os.path.join(os.path.dirname(__file__), 'translation.json'), encoding='utf-8') as config_file:
+            with open(os.path.join(os.path.dirname(__file__), 'language.json'), encoding='utf-8') as config_file:
                 data = json.load(config_file)
             translate = data[locale]
         except Exception as e:
             print("Cannot find the Locale choosing default to english")
-            translate = data['en']
+            translate = data["en"]
         waka_stats = get_stats(g)
         star_me()
         rdmd = decode_readme(contents.content)
